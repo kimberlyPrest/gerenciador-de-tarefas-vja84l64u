@@ -68,7 +68,7 @@ export default function Login() {
           <CardDescription className="text-base">
             {isLogin
               ? 'Gerencie suas tarefas e organize seu dia.'
-              : 'Comece a organizar suas tarefas hoje mesmo.'}
+              : 'Comece a organizar hoje mesmo.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
