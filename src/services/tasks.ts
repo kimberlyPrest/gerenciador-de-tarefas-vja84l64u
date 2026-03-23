@@ -8,6 +8,7 @@ const mapRowToTask = (row: any): Task => ({
   status: row.status as Task['status'],
   dueDate: row.due_date ? new Date(row.due_date) : undefined,
   createdAt: new Date(row.created_at),
+  emailSent: row.email_sent,
 })
 
 export const tasksService = {
@@ -24,7 +25,7 @@ export const tasksService = {
     return (data || []).map(mapRowToTask)
   },
 
-  async createTask(task: Omit<Task, 'id' | 'createdAt'>) {
+  async createTask(task: Omit<Task, 'id' | 'createdAt' | 'emailSent'>) {
     const { data: userData } = await supabase.auth.getUser()
     if (!userData.user) throw new Error('User not authenticated')
 
