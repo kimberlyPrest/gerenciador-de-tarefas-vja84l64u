@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Calendar as CalendarIcon, MoreVertical, Edit2, Trash2, CheckCircle } from 'lucide-react'
+import {
+  Calendar as CalendarIcon,
+  MoreVertical,
+  Edit2,
+  Trash2,
+  CheckCircle,
+  Loader2,
+} from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import {
   DropdownMenu,
@@ -47,7 +54,21 @@ const STATUS_CONFIG = {
 export default function TaskCard({ task }: { task: Task }) {
   const { openEditTask, deleteTask, markAsDone } = useTaskStore()
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const config = STATUS_CONFIG[task.status]
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDeleting(true)
+    try {
+      await deleteTask(task.id)
+      setIsDeleteDialogOpen(false)
+    } catch (error) {
+      // Error handled by toast
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <>
@@ -112,7 +133,10 @@ export default function TaskCard({ task }: { task: Task }) {
         </CardFooter>
       </Card>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={(open) => !isDeleting && setIsDeleteDialogOpen(open)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
@@ -122,11 +146,13 @@ export default function TaskCard({ task }: { task: Task }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleteTask(task.id)}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white focus:ring-red-600"
             >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Deletar Tarefa
             </AlertDialogAction>
           </AlertDialogFooter>

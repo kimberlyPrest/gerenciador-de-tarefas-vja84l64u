@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { isBefore, startOfDay } from 'date-fns'
+import { Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -29,6 +31,7 @@ export default function TaskFormDialog() {
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [status, setStatus] = useState<TaskStatus>('TODO')
   const [error, setError] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     if (isFormOpen) {
@@ -37,24 +40,39 @@ export default function TaskFormDialog() {
       setDueDate(editingTask?.dueDate || undefined)
       setStatus(editingTask?.status || 'TODO')
       setError('')
+      setIsSaving(false)
     }
   }, [isFormOpen, editingTask])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       setError('O título é obrigatório.')
       return
     }
 
-    if (editingTask) {
-      updateTask(editingTask.id, { title, description, dueDate, status })
-    } else {
-      addTask({ title, description, dueDate, status })
+    if (dueDate && isBefore(startOfDay(dueDate), startOfDay(new Date()))) {
+      setError('A data de vencimento não pode estar no passado.')
+      return
+    }
+
+    setIsSaving(true)
+    setError('')
+
+    try {
+      if (editingTask) {
+        await updateTask(editingTask.id, { title, description, dueDate, status })
+      } else {
+        await addTask({ title, description, dueDate, status })
+      }
+    } catch (e) {
+      // Error is handled by the store (toast)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   return (
-    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+    <Dialog open={isFormOpen} onOpenChange={(open) => !isSaving && setIsFormOpen(open)}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{editingTask ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
@@ -67,9 +85,13 @@ export default function TaskFormDialog() {
             <Input
               id="title"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value)
+                if (error) setError('')
+              }}
               placeholder="Ex: Pagar a conta de luz"
               className={error ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              disabled={isSaving}
             />
             {error && <p className="text-sm font-medium text-red-500">{error}</p>}
           </div>
@@ -81,16 +103,27 @@ export default function TaskFormDialog() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Adicione detalhes sobre a tarefa..."
               className="resize-none h-24"
+              disabled={isSaving}
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 flex flex-col justify-end">
               <Label>Vencimento</Label>
-              <DatePicker date={dueDate} setDate={setDueDate} />
+              <DatePicker
+                date={dueDate}
+                setDate={(date) => {
+                  setDueDate(date)
+                  if (error) setError('')
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={status} onValueChange={(val) => setStatus(val as TaskStatus)}>
+              <Select
+                value={status}
+                onValueChange={(val) => setStatus(val as TaskStatus)}
+                disabled={isSaving}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -104,10 +137,13 @@ export default function TaskFormDialog() {
           </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setIsFormOpen(false)}>
+          <Button variant="ghost" onClick={() => setIsFormOpen(false)} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={handleSave}>Salvar Tarefa</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar Tarefa
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

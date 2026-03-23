@@ -9,7 +9,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      tasks: {
+        Row: {
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -153,3 +185,51 @@ export const Constants = {
 // IMPORTANT: The TypeScript types above map UUID, TEXT, VARCHAR all to "string".
 // Use the COLUMN TYPES section below to know the real PostgreSQL type for each column.
 // Always use the correct PostgreSQL type when writing SQL migrations.
+
+// --- COLUMN TYPES (actual PostgreSQL types) ---
+// Use this to know the real database type when writing migrations.
+// "string" in TypeScript types above may be uuid, text, varchar, timestamptz, etc.
+// Table: tasks
+//   id: uuid (not null, default: gen_random_uuid())
+//   user_id: uuid (not null)
+//   title: text (not null)
+//   description: text (nullable)
+//   due_date: timestamp with time zone (nullable)
+//   status: text (not null, default: 'TODO'::text)
+//   created_at: timestamp with time zone (not null, default: now())
+//   updated_at: timestamp with time zone (not null, default: now())
+
+// --- CONSTRAINTS ---
+// Table: tasks
+//   PRIMARY KEY tasks_pkey: PRIMARY KEY (id)
+//   CHECK tasks_status_check: CHECK ((status = ANY (ARRAY['TODO'::text, 'IN_PROGRESS'::text, 'DONE'::text])))
+//   FOREIGN KEY tasks_user_id_fkey: FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+
+// --- ROW LEVEL SECURITY POLICIES ---
+// Table: tasks
+//   Policy "Users can delete their own tasks" (DELETE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//   Policy "Users can insert their own tasks" (INSERT, PERMISSIVE) roles={authenticated}
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "Users can update their own tasks" (UPDATE, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+//     WITH CHECK: (auth.uid() = user_id)
+//   Policy "Users can view their own tasks" (SELECT, PERMISSIVE) roles={authenticated}
+//     USING: (auth.uid() = user_id)
+
+// --- DATABASE FUNCTIONS ---
+// FUNCTION update_updated_at_column()
+//   CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+//    RETURNS trigger
+//    LANGUAGE plpgsql
+//   AS $function$
+//   BEGIN
+//       NEW.updated_at = NOW();
+//       RETURN NEW;
+//   END;
+//   $function$
+//
+
+// --- TRIGGERS ---
+// Table: tasks
+//   update_tasks_updated_at: CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()

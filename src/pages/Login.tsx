@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/hooks/use-auth'
 import { toast } from 'sonner'
+import { LayoutDashboard, Loader2 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,105 +14,111 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { LayoutDashboard } from 'lucide-react'
 
 export default function Login() {
+  const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
+  const [loading, setLoading] = useState(false)
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    if (!email || !password) {
+      toast.error('Preencha todos os campos.')
+      return
+    }
 
+    if (password.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres.')
+      return
+    }
+
+    setLoading(true)
     try {
-      if (isSignUp) {
-        const { error } = await signUp(email, password)
-        if (error) throw error
-        toast.success('Conta criada com sucesso! Faça login para continuar.')
-        setIsSignUp(false)
-      } else {
+      if (isLogin) {
         const { error } = await signIn(email, password)
         if (error) throw error
-        toast.success('Login realizado com sucesso!')
+        toast.success('Bem-vindo de volta!')
         navigate('/')
+      } else {
+        const { error } = await signUp(email, password)
+        if (error) throw error
+        toast.success('Conta criada com sucesso! Você já pode fazer login.')
+        setIsLogin(true)
       }
     } catch (error: any) {
-      toast.error(error.message || 'Ocorreu um erro durante a autenticação.')
+      toast.error(error.message || 'Ocorreu um erro na autenticação.')
     } finally {
-      setIsSubmitting(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 animate-fade-in">
-      <div className="w-full max-w-md space-y-8">
-        <div className="flex flex-col items-center justify-center space-y-2 text-center">
-          <div className="bg-primary/10 p-3 rounded-2xl mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+      <Card className="w-full max-w-md shadow-lg border-0 animate-fade-in-up">
+        <CardHeader className="space-y-3 items-center text-center pb-6">
+          <div className="bg-primary/10 p-4 rounded-2xl mb-2">
             <LayoutDashboard className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">TaskMaster</h1>
-          <p className="text-muted-foreground">Gerencie suas tarefas de forma eficiente.</p>
-        </div>
-
-        <Card className="border-0 shadow-xl shadow-slate-200/50">
-          <CardHeader>
-            <CardTitle>{isSignUp ? 'Criar uma conta' : 'Acesse sua conta'}</CardTitle>
-            <CardDescription>
-              {isSignUp
-                ? 'Preencha os dados abaixo para começar a organizar seu dia.'
-                : 'Insira seu e-mail e senha para acessar suas tarefas.'}
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isSubmitting}
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4 pt-4">
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? 'Aguarde...' : isSignUp ? 'Criar Conta' : 'Entrar'}
-              </Button>
-              <div className="text-center text-sm text-slate-500">
-                {isSignUp ? 'Já tem uma conta?' : 'Ainda não tem uma conta?'}{' '}
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-primary font-medium hover:underline focus:outline-none"
-                  disabled={isSubmitting}
-                >
-                  {isSignUp ? 'Fazer login' : 'Cadastre-se'}
-                </button>
-              </div>
-            </CardFooter>
+          <CardTitle className="text-2xl font-bold text-slate-800">
+            {isLogin ? 'Acesse sua conta' : 'Crie sua conta'}
+          </CardTitle>
+          <CardDescription className="text-base">
+            {isLogin
+              ? 'Gerencie suas tarefas e organize seu dia.'
+              : 'Comece a organizar suas tarefas hoje mesmo.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="voce@exemplo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                required
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                required
+                className="h-11"
+              />
+            </div>
+            <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+              {isLogin ? 'Entrar' : 'Cadastrar'}
+            </Button>
           </form>
-        </Card>
-      </div>
+        </CardContent>
+        <CardFooter className="flex justify-center border-t p-6">
+          <p className="text-sm text-slate-500">
+            {isLogin ? 'Ainda não tem uma conta?' : 'Já possui uma conta?'}{' '}
+            <button
+              type="button"
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-primary hover:underline font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+              disabled={loading}
+            >
+              {isLogin ? 'Cadastre-se' : 'Faça login'}
+            </button>
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   )
 }

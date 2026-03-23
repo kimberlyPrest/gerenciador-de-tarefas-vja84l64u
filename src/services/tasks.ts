@@ -12,6 +12,9 @@ const mapRowToTask = (row: any): Task => ({
 
 export const tasksService = {
   async fetchTasks() {
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) throw new Error('User not authenticated')
+
     const { data, error } = await supabase
       .from('tasks')
       .select('*')

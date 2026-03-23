@@ -2,10 +2,12 @@ import { useMemo } from 'react'
 import useTaskStore from '@/stores/useTaskStore'
 import TaskCard from '@/components/TaskCard'
 import { Button } from '@/components/ui/button'
-import { Plus, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Plus, Loader2, Search } from 'lucide-react'
 
 export default function Index() {
-  const { tasks, statusFilter, searchQuery, openNewTask, isLoading } = useTaskStore()
+  const { tasks, statusFilter, searchQuery, setSearchQuery, openNewTask, isLoading } =
+    useTaskStore()
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -26,7 +28,7 @@ export default function Index() {
     )
   }
 
-  if (filteredTasks.length === 0) {
+  if (tasks.length === 0) {
     return (
       <div className="flex h-full min-h-[60vh] flex-col items-center justify-center space-y-6 animate-fade-in">
         <div className="relative">
@@ -38,11 +40,9 @@ export default function Index() {
           />
         </div>
         <div className="text-center space-y-2 max-w-md">
-          <h2 className="text-2xl font-bold text-slate-800">Nenhuma tarefa encontrada</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Nenhuma tarefa cadastrada</h2>
           <p className="text-slate-500">
-            {searchQuery
-              ? 'Não conseguimos encontrar nenhuma tarefa correspondente à sua busca. Tente palavras-chave diferentes.'
-              : 'Você não tem tarefas correspondentes a este filtro. Que tal organizar o seu dia e criar uma nova?'}
+            Você ainda não tem tarefas. Que tal organizar o seu dia e criar uma nova?
           </p>
         </div>
         <Button onClick={openNewTask} className="rounded-full px-6 mt-4">
@@ -54,20 +54,42 @@ export default function Index() {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Suas Tarefas</h1>
           <p className="text-muted-foreground">Gerencie e acompanhe suas atividades diárias.</p>
         </div>
-        <Button onClick={openNewTask} className="hidden sm:flex rounded-full">
-          <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
-        </Button>
+        <div className="flex items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar tarefas..."
+              className="pl-9 bg-white"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Button onClick={openNewTask} className="hidden sm:flex rounded-full shrink-0">
+            <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
+          </Button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {filteredTasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
-        ))}
-      </div>
+
+      {filteredTasks.length === 0 ? (
+        <div className="text-center py-16 animate-fade-in">
+          <h3 className="text-lg font-medium text-slate-800">Nenhuma tarefa encontrada</h3>
+          <p className="text-slate-500 mt-1">
+            Não encontramos nada correspondente à sua busca atual.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filteredTasks.map((task) => (
+            <TaskCard key={task.id} task={task} />
+          ))}
+        </div>
+      )}
+
       <Button
         onClick={openNewTask}
         size="icon"

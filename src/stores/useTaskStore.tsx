@@ -23,10 +23,10 @@ interface TaskContextData {
   editingTask: Task | null
   openNewTask: () => void
   openEditTask: (task: Task) => void
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void
-  updateTask: (id: string, task: Partial<Task>) => void
-  deleteTask: (id: string) => void
-  markAsDone: (id: string) => void
+  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => Promise<void>
+  updateTask: (id: string, task: Partial<Task>) => Promise<void>
+  deleteTask: (id: string) => Promise<void>
+  markAsDone: (id: string) => Promise<void>
   refreshTasks: () => Promise<void>
 }
 
@@ -45,8 +45,8 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     try {
       const data = await tasksService.fetchTasks()
       setTasks(data)
-    } catch (e) {
-      toast.error('Erro ao carregar tarefas.')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao carregar tarefas.')
     } finally {
       setIsLoading(false)
     }
@@ -69,42 +69,46 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
   const addTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     try {
       const newTask = await tasksService.createTask(taskData)
-      setTasks([newTask, ...tasks])
+      setTasks((prev) => [newTask, ...prev])
       setIsFormOpen(false)
       toast.success('Tarefa criada com sucesso!')
-    } catch (e) {
-      toast.error('Erro ao criar tarefa.')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao criar tarefa.')
+      throw e
     }
   }
 
   const updateTask = async (id: string, taskData: Partial<Task>) => {
     try {
       const updatedTask = await tasksService.updateTask(id, taskData)
-      setTasks(tasks.map((t) => (t.id === id ? { ...t, ...updatedTask } : t)))
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...updatedTask } : t)))
       setIsFormOpen(false)
       toast.success('Tarefa atualizada!')
-    } catch (e) {
-      toast.error('Erro ao atualizar tarefa.')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao atualizar tarefa.')
+      throw e
     }
   }
 
   const deleteTask = async (id: string) => {
     try {
       await tasksService.deleteTask(id)
-      setTasks(tasks.filter((t) => t.id !== id))
+      setTasks((prev) => prev.filter((t) => t.id !== id))
       toast.success('Tarefa excluída.')
-    } catch (e) {
-      toast.error('Erro ao excluir tarefa.')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao excluir tarefa.')
+      throw e
     }
   }
 
   const markAsDone = async (id: string) => {
     try {
       await tasksService.updateTask(id, { status: 'DONE' })
-      setTasks(tasks.map((t) => (t.id === id ? { ...t, status: 'DONE' } : t)))
+      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'DONE' } : t)))
       toast.success('Tarefa concluída!')
-    } catch (e) {
-      toast.error('Erro ao concluir tarefa.')
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao concluir tarefa.')
+      throw e
     }
   }
 
