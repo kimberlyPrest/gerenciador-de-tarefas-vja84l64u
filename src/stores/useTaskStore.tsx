@@ -1,9 +1,19 @@
-import React, { createContext, useContext, useState, useMemo, ReactNode } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useMemo,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react'
 import { toast } from 'sonner'
 import { Task, TaskStatus } from '@/types'
+import { tasksService } from '@/services/tasks'
 
 interface TaskContextData {
   tasks: Task[]
+  isLoading: boolean
   searchQuery: string
   setSearchQuery: (query: string) => void
   statusFilter: TaskStatus | 'ALL'
@@ -17,45 +27,34 @@ interface TaskContextData {
   updateTask: (id: string, task: Partial<Task>) => void
   deleteTask: (id: string) => void
   markAsDone: (id: string) => void
+  refreshTasks: () => Promise<void>
 }
 
 const TaskContext = createContext<TaskContextData | undefined>(undefined)
 
-const generateId = () => Math.random().toString(36).substring(2, 9)
-
-const MOCK_TASKS: Task[] = [
-  {
-    id: '1',
-    title: 'Comprar mantimentos',
-    description: 'Leite, ovos, pão e café.',
-    status: 'TODO',
-    createdAt: new Date(),
-    dueDate: new Date(Date.now() + 86400000),
-  },
-  {
-    id: '2',
-    title: 'Reunião de Alinhamento',
-    description: 'Discutir a nova funcionalidade com a equipe.',
-    status: 'IN_PROGRESS',
-    createdAt: new Date(),
-    dueDate: new Date(),
-  },
-  {
-    id: '3',
-    title: 'Atualizar documentação',
-    description: 'Revisar e atualizar a doc do projeto.',
-    status: 'DONE',
-    createdAt: new Date(),
-    dueDate: new Date(Date.now() - 86400000),
-  },
-]
-
 export const TaskProvider = ({ children }: { children: ReactNode }) => {
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL')
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
+
+  const fetchTasks = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const data = await tasksService.fetchTasks()
+      setTasks(data)
+    } catch (e) {
+      toast.error('Erro ao carregar tarefas.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
 
   const openNewTask = () => {
     setEditingTask(null)
@@ -67,32 +66,52 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
     setIsFormOpen(true)
   }
 
-  const addTask = (taskData: Omit<Task, 'id' | 'createdAt'>) => {
-    const newTask: Task = { ...taskData, id: generateId(), createdAt: new Date() }
-    setTasks([newTask, ...tasks])
-    setIsFormOpen(false)
-    toast.success('Tarefa criada com sucesso!')
+  const addTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
+    try {
+      const newTask = await tasksService.createTask(taskData)
+      setTasks([newTask, ...tasks])
+      setIsFormOpen(false)
+      toast.success('Tarefa criada com sucesso!')
+    } catch (e) {
+      toast.error('Erro ao criar tarefa.')
+    }
   }
 
-  const updateTask = (id: string, taskData: Partial<Task>) => {
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, ...taskData } : t)))
-    setIsFormOpen(false)
-    toast.success('Tarefa atualizada!')
+  const updateTask = async (id: string, taskData: Partial<Task>) => {
+    try {
+      const updatedTask = await tasksService.updateTask(id, taskData)
+      setTasks(tasks.map((t) => (t.id === id ? { ...t, ...updatedTask } : t)))
+      setIsFormOpen(false)
+      toast.success('Tarefa atualizada!')
+    } catch (e) {
+      toast.error('Erro ao atualizar tarefa.')
+    }
   }
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter((t) => t.id !== id))
-    toast.success('Tarefa excluída.')
+  const deleteTask = async (id: string) => {
+    try {
+      await tasksService.deleteTask(id)
+      setTasks(tasks.filter((t) => t.id !== id))
+      toast.success('Tarefa excluída.')
+    } catch (e) {
+      toast.error('Erro ao excluir tarefa.')
+    }
   }
 
-  const markAsDone = (id: string) => {
-    setTasks(tasks.map((t) => (t.id === id ? { ...t, status: 'DONE' } : t)))
-    toast.success('Tarefa concluída!')
+  const markAsDone = async (id: string) => {
+    try {
+      await tasksService.updateTask(id, { status: 'DONE' })
+      setTasks(tasks.map((t) => (t.id === id ? { ...t, status: 'DONE' } : t)))
+      toast.success('Tarefa concluída!')
+    } catch (e) {
+      toast.error('Erro ao concluir tarefa.')
+    }
   }
 
   const value = useMemo(
     () => ({
       tasks,
+      isLoading,
       searchQuery,
       setSearchQuery,
       statusFilter,
@@ -106,8 +125,9 @@ export const TaskProvider = ({ children }: { children: ReactNode }) => {
       updateTask,
       deleteTask,
       markAsDone,
+      refreshTasks: fetchTasks,
     }),
-    [tasks, searchQuery, statusFilter, isFormOpen, editingTask],
+    [tasks, isLoading, searchQuery, statusFilter, isFormOpen, editingTask, fetchTasks],
   )
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>

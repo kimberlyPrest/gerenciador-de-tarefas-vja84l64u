@@ -2,10 +2,10 @@ import { useMemo } from 'react'
 import useTaskStore from '@/stores/useTaskStore'
 import TaskCard from '@/components/TaskCard'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
 
 export default function Index() {
-  const { tasks, statusFilter, searchQuery, openNewTask } = useTaskStore()
+  const { tasks, statusFilter, searchQuery, openNewTask, isLoading } = useTaskStore()
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -16,6 +16,15 @@ export default function Index() {
       return matchesStatus && matchesSearch
     })
   }, [tasks, statusFilter, searchQuery])
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full min-h-[60vh] flex-col items-center justify-center space-y-4 animate-fade-in">
+        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+        <p className="text-slate-500 font-medium">Carregando suas tarefas...</p>
+      </div>
+    )
+  }
 
   if (filteredTasks.length === 0) {
     return (
@@ -50,12 +59,22 @@ export default function Index() {
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Suas Tarefas</h1>
           <p className="text-muted-foreground">Gerencie e acompanhe suas atividades diárias.</p>
         </div>
+        <Button onClick={openNewTask} className="hidden sm:flex rounded-full">
+          <Plus className="mr-2 h-4 w-4" /> Nova Tarefa
+        </Button>
       </div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredTasks.map((task) => (
           <TaskCard key={task.id} task={task} />
         ))}
       </div>
+      <Button
+        onClick={openNewTask}
+        size="icon"
+        className="sm:hidden fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-40"
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
     </div>
   )
 }
